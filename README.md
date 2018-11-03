@@ -10,6 +10,7 @@ Reimplementation of deep_retina in Pytorch
 * matplotlib and seaborn
 
 ## Results
+For this results, I trained the model on the data from paper "Analysis of Neuronal Spike Trains, Deconstructed, by Aljadeff et. al." with some arbitrary hyperparameters. For better results, more hyperparameter tuning is needed.
 
 #### Spike count prediction sample
 ![Spike count prediction sample](https://github.com/bmeatayi/deep_retina_pytorch/blob/dev/images/spike_cnt_pred.png)
