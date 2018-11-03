@@ -1,7 +1,9 @@
+import os
 import numpy as np
 import torch
 from torch.autograd import Variable
-
+from tensorboardX import SummaryWriter
+import torchvision.utils as tvutil
 
 class Solver(object):
     default_adam_args = {"lr": 1e-3,
@@ -13,7 +15,8 @@ class Solver(object):
                  optim=torch.optim.Adam, optim_args={},
                  loss_func=torch.nn.PoissonNLLLoss(log_input=False, full=True),
                  l1_w=1e-5,
-                 l2_w=1e-5):
+                 l2_w=1e-5,
+                 log_folder='logs'):
         """
         Optimizer of models.
         :param optim: Optimizer algorithm (default: Adam optimizer)
@@ -22,6 +25,9 @@ class Solver(object):
         :param l1_w: L1 regularization weight
         :param l2_w: L2 regularization weight
         """
+        self.log_folder = log_folder
+        os.makedirs(log_folder, exist_ok=True)
+        self.logger = SummaryWriter(log_folder)
 
         optim_args_merged = self.default_adam_args.copy()
         optim_args_merged.update(optim_args)
@@ -50,20 +56,18 @@ class Solver(object):
         - log_nth: Report loss every n iteration
         - mdl_file: file name of saved model
         """
-
+        self.log_weights(model)
         optim = self.optim(model.parameters(), **self.optim_args)
+        self.logger.add_text('Model architecture', repr(model))
+        self.logger.add_text('Optimizer', repr(optim))
         self._reset_histories()
-        iter_per_epoch = len(train_loader)
 
         if torch.cuda.is_available():
             model.cuda()
 
-        nIterations = num_epochs * iter_per_epoch
-        it = 0
         print('Start training...')
 
         for epoch in range(num_epochs):
-
             for i, (inputs, targets) in enumerate(train_loader, 1):
                 inputs, targets = inputs.float(), targets.float()
 
@@ -85,21 +89,41 @@ class Solver(object):
 
                 optim.step()
 
-                print('[Iteration %i/%i] Train loss: %f' % (it, nIterations,
-                                                            loss.data.cpu().numpy()))
+                print('[Epoch %d/%d] [Batch %d/%d] [Train loss: %f]' % (epoch, num_epochs,  i, len(train_loader),
+                                                                        loss.data.cpu().numpy()))
 
                 self.train_loss_history.append(loss.data.cpu().numpy())
-
-                if it % log_nth == 0:
+                batches_done = epoch * len(train_loader) + i
+                self.logger.add_scalar('train_loss', self.train_loss_history[-1], batches_done)
+                if batches_done % log_nth == 0:
                     val_loss = self.test(model, val_loader)
                     self.val_loss_history.append(val_loss)
-                    print('[Iteration %i/%i] Validation loss: %f' % (it, nIterations, val_loss))
+                    print('[Epoch %d/%d] [Batch %d/%d] [Val loss: %f]' % (epoch, num_epochs, i, len(train_loader), val_loss))
+                    self.logger.add_scalar('val_loss', self.train_loss_history[-1], batches_done)
 
-                it += 1
-
-            model.save(mdl_file + '.mdl')
-
+            model.save(self.log_folder + '//' + mdl_file + '.mdl')
+        self.logger.close()
         print('FINISH.')
+
+    def log_weights(self, model):
+        conv1_filter = model.conv1.weight.detach()
+        conv1_img = tvutil.make_grid(conv1_filter.view(conv1_filter.size(0)*conv1_filter.size(1),
+                                                       1, conv1_filter.size(2), conv1_filter.size(2)),
+                                     nrow=conv1_filter.size(1),
+                                     normalize=True, padding=3)
+        self.logger.add_image('conv1_filters', conv1_img)
+
+        conv2_filter = model.conv2.weight.detach()
+        conv2_img = tvutil.make_grid(conv2_filter.view(conv2_filter.size(0) * conv2_filter.size(1),
+                                                       1, conv2_filter.size(2), conv2_filter.size(2)),
+                                     nrow=conv2_filter.size(1),
+                                     normalize=True, padding=3)
+        self.logger.add_image('conv2_filters', conv2_img)
+
+        filtsz = model.l3_filt_shape
+        fc_filter = model.fc.weight.view(filtsz[0]*filtsz[1], 1, filtsz[2], filtsz[3])
+        fc_img = tvutil.make_grid(fc_filter, nrow=53, normalize=True)
+        self.logger.add_image('fc_filters', fc_img)
 
     def test(self, model, val_loader):
         model.eval()  # Set model state to evaluation
