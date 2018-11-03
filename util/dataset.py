@@ -58,8 +58,8 @@ class SpikeDataset	(data.Dataset):
         """
         Returns idx_th chunk of stimulus and corresponding response
         :param idx: index of data chunk
-        :return: stim: Stimuli matrix
-                cnt: Spike counts
+        :return: stim: Stimuli matrix with dimension (win_len*n_split, StimWidth, StimHeight)
+                cnt: Spike counts with dimension (n_cnt_hist, n_cell)
         """
         cnt_idx = idx + self.win_len * self.n_split - 1
         cnt = np.clip(self.spike_rate[(cnt_idx-self.n_cnt_hist):cnt_idx+1, :], a_min=0, a_max=None)

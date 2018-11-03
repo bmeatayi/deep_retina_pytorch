@@ -62,7 +62,6 @@ class Solver(object):
         it = 0
         print('Start training...')
 
-        epoch_dict = {}
         for epoch in range(num_epochs):
 
             for i, (inputs, targets) in enumerate(train_loader, 1):
@@ -86,7 +85,7 @@ class Solver(object):
                 l1_regularizer = self.l1_w * torch.norm(fc_param, 1)
                 l2_regularizer = self.l2_w * (torch.norm(conv1_param, 2) + torch.norm(conv2_param, 2))
 
-                loss = self.loss_func(outputs, targets) + l1_regularizer + l2_regularizer
+                loss = self.loss_func(outputs, torch.squeeze(targets, dim=1)) + l1_regularizer + l2_regularizer
 
                 loss.backward()
 
@@ -117,8 +116,8 @@ class Solver(object):
             if model.is_cuda:
                 inputs = inputs.cuda()
                 targets = targets.cuda()
-            outputs = model.forward(torch.squeeze(inputs, 0))
-            loss = self.loss_func(outputs, targets)
+            outputs = model.forward(inputs)
+            loss = self.loss_func(outputs, torch.squeeze(targets, dim=1))
             val_losses.append(loss.data.cpu().numpy())
         model.train()
         return np.mean(val_losses)

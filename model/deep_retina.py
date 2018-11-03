@@ -18,7 +18,7 @@ class DeepRetina(nn.Module):
         """
         Reimplementation of deep_retina convolutional network in pytorch
         Reference: McIntosh et. al.(2016). Deep learning models of the retinal response to natural scenes
-        Resource: https://github.com/baccuslab/deep-retina
+        Keras code: https://github.com/baccuslab/deep-retina
         Args:
             - nW,nH: stimulation frame size in pixels
             - nL: Length of temporal filter in the first layer
