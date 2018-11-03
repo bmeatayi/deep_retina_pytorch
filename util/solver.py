@@ -75,15 +75,9 @@ class Solver(object):
 
                 # Regularizer (TO DO later: Reg should be moved to model class because it is model dependent and hinders
                 # the solver class to be general for all models
-                conv1_param = torch.cat([x.view(-1)
-                                         for x in model.conv1.parameters()])
-                conv2_param = torch.cat([x.view(-1)
-                                         for x in model.conv2.parameters()])
-                fc_param = torch.cat([x.view(-1)
-                                      for x in model.fc.parameters()])
 
-                l1_regularizer = self.l1_w * torch.norm(fc_param, 1)
-                l2_regularizer = self.l2_w * (torch.norm(conv1_param, 2) + torch.norm(conv2_param, 2))
+                l1_regularizer = self.l1_w * torch.norm(model.fc.weight.view(-1), 1)
+                l2_regularizer = self.l2_w * (torch.norm(model.conv1.weight.view(-1), 2) + torch.norm(model.conv2.weight.view(-1), 2))
 
                 loss = self.loss_func(outputs, torch.squeeze(targets, dim=1)) + l1_regularizer + l2_regularizer
 
